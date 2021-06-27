@@ -139,6 +139,7 @@ func installClean(ctx Context, config Config) {
 		productOut("skin"),
 		productOut("obj/DTB_OBJ"),
 		productOut("obj/DTBO_OBJ"),
+		productOut("obj/kernel"),
 		productOut("obj/KERNEL_OBJ"),
 		productOut("obj/NOTICE_FILES"),
 		productOut("obj/PACKAGING"),
