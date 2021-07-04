@@ -259,8 +259,8 @@ type overridableAppProperties struct {
 	// or an android_app_certificate module name in the form ":module".
 	Certificate *string
 
-	// Name of the signing certificate lineage file.
-	Lineage *string
+	// Name of the signing certificate crystal file.
+	Crystal *string
 
 	// the package name of this app. The package name in the manifest file is used if one was not given.
 	Package_name *string
@@ -596,7 +596,7 @@ func (a *AndroidApp) dexBuildActions(ctx android.ModuleContext) android.Path {
 	a.dexpreopter.libraryPaths = a.usesLibrary.usesLibraryPaths(ctx)
 	a.dexpreopter.manifestFile = a.mergedManifestFile
 
-	if ctx.ModuleName() != "framework-res" && ctx.ModuleName() != "org.lineageos.platform-res" {
+	if ctx.ModuleName() != "framework-res"{
 		a.Module.compile(ctx, a.aaptSrcJar)
 	}
 
@@ -742,9 +742,6 @@ func (a *AndroidApp) generateAndroidBuildActions(ctx android.ModuleContext) {
 	if ctx.ModuleName() == "framework-res" {
 		// framework-res.apk is installed as system/framework/framework-res.apk
 		a.installDir = android.PathForModuleInstall(ctx, "framework")
-	} else if ctx.ModuleName() == "org.lineageos.platform-res" {
-		// org.lineageos.platform-res.apk needs to be in system/framework
-		a.installDir = android.PathForModuleInstall(ctx, "framework")
 	} else if a.Privileged() {
 		a.installDir = android.PathForModuleInstall(ctx, "priv-app", a.installApkName)
 	} else if ctx.InstallInTestcases() {
@@ -793,11 +790,11 @@ func (a *AndroidApp) generateAndroidBuildActions(ctx android.ModuleContext) {
 	if v4SigningRequested {
 		v4SignatureFile = android.PathForModuleOut(ctx, a.installApkName+".apk.idsig")
 	}
-	var lineageFile android.Path
-	if lineage := String(a.overridableAppProperties.Lineage); lineage != "" {
-		lineageFile = android.PathForModuleSrc(ctx, lineage)
+	var crystalFile android.Path
+	if crystal := String(a.overridableAppProperties.Crystal); crystal != "" {
+		crystalFile = android.PathForModuleSrc(ctx, crystal)
 	}
-	CreateAndSignAppPackage(ctx, packageFile, a.exportPackage, jniJarFile, dexJarFile, certificates, apkDeps, v4SignatureFile, lineageFile)
+	CreateAndSignAppPackage(ctx, packageFile, a.exportPackage, jniJarFile, dexJarFile, certificates, apkDeps, v4SignatureFile, crystalFile)
 	a.outputFile = packageFile
 	if v4SigningRequested {
 		a.extraOutputFiles = append(a.extraOutputFiles, v4SignatureFile)
@@ -809,7 +806,7 @@ func (a *AndroidApp) generateAndroidBuildActions(ctx android.ModuleContext) {
 		if v4SigningRequested {
 			v4SignatureFile = android.PathForModuleOut(ctx, a.installApkName+"_"+split.suffix+".apk.idsig")
 		}
-		CreateAndSignAppPackage(ctx, packageFile, split.path, nil, nil, certificates, apkDeps, v4SignatureFile, lineageFile)
+		CreateAndSignAppPackage(ctx, packageFile, split.path, nil, nil, certificates, apkDeps, v4SignatureFile, crystalFile)
 		a.extraOutputFiles = append(a.extraOutputFiles, packageFile)
 		if v4SigningRequested {
 			a.extraOutputFiles = append(a.extraOutputFiles, v4SignatureFile)
@@ -1320,8 +1317,8 @@ type AndroidAppImportProperties struct {
 	// be set for presigned modules.
 	Presigned *bool
 
-	// Name of the signing certificate lineage file.
-	Lineage *string
+	// Name of the signing certificate crystal file.
+	Crystal *string
 
 	// Sign with the default system dev certificate. Must be used judiciously. Most imported apps
 	// need to either specify a specific certificate or be presigned.
@@ -1525,11 +1522,11 @@ func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext
 		}
 		a.certificate = certificates[0]
 		signed := android.PathForModuleOut(ctx, "signed", apkFilename)
-		var lineageFile android.Path
-		if lineage := String(a.properties.Lineage); lineage != "" {
-			lineageFile = android.PathForModuleSrc(ctx, lineage)
+		var crystalFile android.Path
+		if crystal := String(a.properties.Crystal); crystal != "" {
+			crystalFile = android.PathForModuleSrc(ctx, crystal)
 		}
-		SignAppPackage(ctx, signed, dexOutput, certificates, nil, lineageFile)
+		SignAppPackage(ctx, signed, dexOutput, certificates, nil, crystalFile)
 		a.outputFile = signed
 	} else {
 		alignedApk := android.PathForModuleOut(ctx, "zip-aligned", apkFilename)
@@ -1722,8 +1719,8 @@ type RuntimeResourceOverlayProperties struct {
 	// module name in the form ":module".
 	Certificate *string
 
-	// Name of the signing certificate lineage file.
-	Lineage *string
+	// Name of the signing certificate crystal file.
+	Crystal *string
 
 	// optional theme name. If specified, the overlay package will be applied
 	// only when the ro.boot.vendor.overlay.theme system property is set to the same value.
@@ -1790,11 +1787,11 @@ func (r *RuntimeResourceOverlay) GenerateAndroidBuildActions(ctx android.ModuleC
 	_, certificates := collectAppDeps(ctx, r, false, false)
 	certificates = processMainCert(r.ModuleBase, String(r.properties.Certificate), certificates, ctx)
 	signed := android.PathForModuleOut(ctx, "signed", r.Name()+".apk")
-	var lineageFile android.Path
-	if lineage := String(r.properties.Lineage); lineage != "" {
-		lineageFile = android.PathForModuleSrc(ctx, lineage)
+	var crystalFile android.Path
+	if crystal := String(r.properties.Crystal); crystal != "" {
+		crystalFile = android.PathForModuleSrc(ctx, crystal)
 	}
-	SignAppPackage(ctx, signed, r.aapt.exportPackage, certificates, nil, lineageFile)
+	SignAppPackage(ctx, signed, r.aapt.exportPackage, certificates, nil, crystalFile)
 	r.certificate = certificates[0]
 
 	r.outputFile = signed

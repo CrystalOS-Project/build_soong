@@ -52,7 +52,7 @@ var combineApk = pctx.AndroidStaticRule("combineApk",
 	})
 
 func CreateAndSignAppPackage(ctx android.ModuleContext, outputFile android.WritablePath,
-	packageFile, jniJarFile, dexJarFile android.Path, certificates []Certificate, deps android.Paths, v4SignatureFile android.WritablePath, lineageFile android.Path) {
+	packageFile, jniJarFile, dexJarFile android.Path, certificates []Certificate, deps android.Paths, v4SignatureFile android.WritablePath, crystalFile android.Path) {
 
 	unsignedApkName := strings.TrimSuffix(outputFile.Base(), ".apk") + "-unsigned.apk"
 	unsignedApk := android.PathForModuleOut(ctx, unsignedApkName)
@@ -73,10 +73,10 @@ func CreateAndSignAppPackage(ctx android.ModuleContext, outputFile android.Writa
 		Implicits: deps,
 	})
 
-	SignAppPackage(ctx, outputFile, unsignedApk, certificates, v4SignatureFile, lineageFile)
+	SignAppPackage(ctx, outputFile, unsignedApk, certificates, v4SignatureFile, crystalFile)
 }
 
-func SignAppPackage(ctx android.ModuleContext, signedApk android.WritablePath, unsignedApk android.Path, certificates []Certificate, v4SignatureFile android.WritablePath, lineageFile android.Path) {
+func SignAppPackage(ctx android.ModuleContext, signedApk android.WritablePath, unsignedApk android.Path, certificates []Certificate, v4SignatureFile android.WritablePath, crystalFile android.Path) {
 
 	var certificateArgs []string
 	var deps android.Paths
@@ -92,9 +92,9 @@ func SignAppPackage(ctx android.ModuleContext, signedApk android.WritablePath, u
 		flags = append(flags, "--enable-v4")
 	}
 
-	if lineageFile != nil {
-		flags = append(flags, "--lineage", lineageFile.String())
-		deps = append(deps, lineageFile)
+	if crystalFile != nil {
+		flags = append(flags, "--crystal", crystalFile.String())
+		deps = append(deps, crystalFile)
 	}
 
 	rule := Signapk

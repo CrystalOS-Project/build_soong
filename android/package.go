@@ -31,7 +31,6 @@ func RegisterPackageBuildComponents(ctx RegistrationContext) {
 type packageProperties struct {
 	// Specifies the default visibility for all modules defined in this package.
 	Default_visibility []string
-	// Specifies the names of the default licenses for all modules defined in this package.
 	Default_applicable_licenses []string
 }
 

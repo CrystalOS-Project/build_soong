@@ -11,33 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package java
-
 import (
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-
 	"android/soong/android"
 	"android/soong/java/config"
-
 	"github.com/google/blueprint/pathtools"
 )
-
 func init() {
 	android.RegisterPreSingletonType("sdk_versions", sdkPreSingletonFactory)
 	android.RegisterSingletonType("sdk", sdkSingletonFactory)
 	android.RegisterMakeVarsProvider(pctx, sdkMakeVars)
 }
-
 var sdkVersionsKey = android.NewOnceKey("sdkVersionsKey")
 var sdkFrameworkAidlPathKey = android.NewOnceKey("sdkFrameworkAidlPathKey")
 var nonUpdatableFrameworkAidlPathKey = android.NewOnceKey("nonUpdatableFrameworkAidlPathKey")
 var apiFingerprintPathKey = android.NewOnceKey("apiFingerprintPathKey")
-
 type sdkContext interface {
 	// sdkVersion returns sdkSpec that corresponds to the sdk_version property of the current module
 	sdkVersion() sdkSpec
@@ -50,7 +43,6 @@ type sdkContext interface {
 	// or from sdk_version if it is not set.
 	targetSdkVersion() sdkSpec
 }
-
 func UseApiFingerprint(ctx android.BaseModuleContext) bool {
 	if ctx.Config().UnbundledBuild() &&
 		!ctx.Config().UnbundledBuildUsePrebuiltSdks() &&
@@ -59,10 +51,8 @@ func UseApiFingerprint(ctx android.BaseModuleContext) bool {
 	}
 	return false
 }
-
 // sdkKind represents a particular category of an SDK spec like public, system, test, etc.
 type sdkKind int
-
 const (
 	sdkInvalid sdkKind = iota
 	sdkNone
@@ -75,7 +65,6 @@ const (
 	sdkSystemServer
 	sdkPrivate
 )
-
 // String returns the string representation of this sdkKind
 func (k sdkKind) String() string {
 	switch k {
@@ -101,10 +90,8 @@ func (k sdkKind) String() string {
 		return "invalid"
 	}
 }
-
 // sdkVersion represents a specific version number of an SDK spec of a particular kind
 type sdkVersion int
-
 const (
 	// special version number for a not-yet-frozen SDK
 	sdkVersionCurrent sdkVersion = sdkVersion(android.FutureApiLevel)
@@ -112,17 +99,14 @@ const (
 	// make sense, e.g. "none", "", etc.
 	sdkVersionNone sdkVersion = sdkVersion(0)
 )
-
 // isCurrent checks if the sdkVersion refers to the not-yet-published version of an sdkKind
 func (v sdkVersion) isCurrent() bool {
 	return v == sdkVersionCurrent
 }
-
 // isNumbered checks if the sdkVersion refers to the published (a.k.a numbered) version of an sdkKind
 func (v sdkVersion) isNumbered() bool {
 	return !v.isCurrent() && v != sdkVersionNone
 }
-
 // String returns the string representation of this sdkVersion.
 func (v sdkVersion) String() string {
 	if v.isCurrent() {
@@ -132,7 +116,6 @@ func (v sdkVersion) String() string {
 	}
 	return "(no version)"
 }
-
 // asNumberString directly converts the numeric value of this sdk version as a string.
 // When isNumbered() is true, this method is the same as String(). However, for sdkVersionCurrent
 // and sdkVersionNone, this returns 10000 and 0 while String() returns "current" and "(no version"),
@@ -140,29 +123,24 @@ func (v sdkVersion) String() string {
 func (v sdkVersion) asNumberString() string {
 	return strconv.Itoa(int(v))
 }
-
 // sdkSpec represents the kind and the version of an SDK for a module to build against
 type sdkSpec struct {
 	kind    sdkKind
 	version sdkVersion
 	raw     string
 }
-
 func (s sdkSpec) String() string {
 	return fmt.Sprintf("%s_%s", s.kind, s.version)
 }
-
 // valid checks if this sdkSpec is well-formed. Note however that true doesn't mean that the
 // specified SDK actually exists.
 func (s sdkSpec) valid() bool {
 	return s.kind != sdkInvalid
 }
-
 // specified checks if this sdkSpec is well-formed and is not "".
 func (s sdkSpec) specified() bool {
 	return s.valid() && s.kind != sdkPrivate
 }
-
 // whether the API surface is managed and versioned, i.e. has .txt file that
 // get frozen on SDK freeze and changes get reviewed by API council.
 func (s sdkSpec) stable() bool {
@@ -182,7 +160,6 @@ func (s sdkSpec) stable() bool {
 	}
 	return false
 }
-
 // prebuiltSdkAvailableForUnbundledBuilt tells whether this sdkSpec can have a prebuilt SDK
 // that can be used for unbundled builds.
 func (s sdkSpec) prebuiltSdkAvailableForUnbundledBuild() bool {
@@ -190,7 +167,6 @@ func (s sdkSpec) prebuiltSdkAvailableForUnbundledBuild() bool {
 	// as we don't/can't have prebuilt stub for the versions
 	return s.kind != sdkPrivate && s.kind != sdkNone && s.kind != sdkCorePlatform
 }
-
 // forPdkBuild converts this sdkSpec into another sdkSpec that is for the PDK builds.
 func (s sdkSpec) forPdkBuild(ctx android.EarlyModuleContext) sdkSpec {
 	// For PDK builds, use the latest SDK version instead of "current" or ""
@@ -207,7 +183,6 @@ func (s sdkSpec) forPdkBuild(ctx android.EarlyModuleContext) sdkSpec {
 	}
 	return s
 }
-
 // usePrebuilt determines whether prebuilt SDK should be used for this sdkSpec with the given context.
 func (s sdkSpec) usePrebuilt(ctx android.EarlyModuleContext) bool {
 	if s.version.isCurrent() {
@@ -225,7 +200,6 @@ func (s sdkSpec) usePrebuilt(ctx android.EarlyModuleContext) bool {
 	// "", "none", "core_platform" fall here
 	return false
 }
-
 // effectiveVersion converts an sdkSpec into the concrete sdkVersion that the module
 // should use. For modules targeting an unreleased SDK (meaning it does not yet have a number)
 // it returns android.FutureApiLevel(10000).
@@ -241,7 +215,6 @@ func (s sdkSpec) effectiveVersion(ctx android.EarlyModuleContext) (sdkVersion, e
 	}
 	return sdkVersion(ctx.Config().DefaultAppTargetSdkInt()), nil
 }
-
 // effectiveVersionString converts an sdkSpec into the concrete version string that the module
 // should use. For modules targeting an unreleased SDK (meaning it does not yet have a number)
 // it returns the codename (P, Q, R, etc.)
@@ -252,7 +225,6 @@ func (s sdkSpec) effectiveVersionString(ctx android.EarlyModuleContext) (string,
 	}
 	return ver.String(), err
 }
-
 func (s sdkSpec) defaultJavaLanguageVersion(ctx android.EarlyModuleContext) javaVersion {
 	sdk, err := s.effectiveVersion(ctx)
 	if err != nil {
@@ -266,7 +238,6 @@ func (s sdkSpec) defaultJavaLanguageVersion(ctx android.EarlyModuleContext) java
 		return JAVA_VERSION_9
 	}
 }
-
 func sdkSpecFrom(str string) sdkSpec {
 	switch str {
 	// special cases first
@@ -279,7 +250,6 @@ func sdkSpecFrom(str string) sdkSpec {
 	default:
 		// the syntax is [kind_]version
 		sep := strings.LastIndex(str, "_")
-
 		var kindString string
 		if sep == 0 {
 			return sdkSpec{sdkInvalid, sdkVersionNone, str}
@@ -289,7 +259,6 @@ func sdkSpecFrom(str string) sdkSpec {
 			kindString = str[0:sep]
 		}
 		versionString := str[sep+1 : len(str)]
-
 		var kind sdkKind
 		switch kindString {
 		case "":
@@ -307,7 +276,6 @@ func sdkSpecFrom(str string) sdkSpec {
 		default:
 			return sdkSpec{sdkInvalid, sdkVersionNone, str}
 		}
-
 		var version sdkVersion
 		if versionString == "current" {
 			version = sdkVersionCurrent
@@ -316,22 +284,18 @@ func sdkSpecFrom(str string) sdkSpec {
 		} else {
 			return sdkSpec{sdkInvalid, sdkVersionNone, str}
 		}
-
 		return sdkSpec{kind, version, str}
 	}
 }
-
 func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep {
 	sdkVersion := sdkContext.sdkVersion()
 	if !sdkVersion.valid() {
 		ctx.PropertyErrorf("sdk_version", "invalid version %q", sdkVersion.raw)
 		return sdkDep{}
 	}
-
 	if ctx.Config().IsPdkBuild() {
 		sdkVersion = sdkVersion.forPdkBuild(ctx)
 	}
-
 	if sdkVersion.usePrebuilt(ctx) {
 		dir := filepath.Join("prebuilts", "sdk", sdkVersion.version.String(), sdkVersion.kind.String())
 		jar := filepath.Join(dir, "android.jar")
@@ -342,29 +306,24 @@ func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep 
 		jarPath := android.ExistentPathForSource(ctx, jar)
 		aidlPath := android.ExistentPathForSource(ctx, aidl)
 		lambdaStubsPath := android.PathForSource(ctx, config.SdkLambdaStubsPath)
-
 		if (!jarPath.Valid() || !aidlPath.Valid()) && ctx.Config().AllowMissingDependencies() {
 			return sdkDep{
 				invalidVersion: true,
 				bootclasspath:  []string{fmt.Sprintf("sdk_%s_%s_android", sdkVersion.kind, sdkVersion.version.String())},
 			}
 		}
-
 		if !jarPath.Valid() {
 			ctx.PropertyErrorf("sdk_version", "invalid sdk version %q, %q does not exist", sdkVersion.raw, jar)
 			return sdkDep{}
 		}
-
 		if !aidlPath.Valid() {
 			ctx.PropertyErrorf("sdk_version", "invalid sdk version %q, %q does not exist", sdkVersion.raw, aidl)
 			return sdkDep{}
 		}
-
 		var systemModules string
 		if sdkVersion.defaultJavaLanguageVersion(ctx).usesJavaModules() {
 			systemModules = "sdk_public_" + sdkVersion.version.String() + "_system_modules"
 		}
-
 		return sdkDep{
 			useFiles:      true,
 			jars:          android.Paths{jarPath.Path(), lambdaStubsPath},
@@ -372,19 +331,16 @@ func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep 
 			systemModules: systemModules,
 		}
 	}
-
-	toModule := func(modules []string, res string, lineageRes string, aidl android.Path) sdkDep {
+	toModule := func(modules []string, res string, aidl android.Path) sdkDep {
 		return sdkDep{
 			useModule:          true,
 			bootclasspath:      append(modules, config.DefaultLambdaStubsLibrary),
 			systemModules:      "core-current-stubs-system-modules",
 			java9Classpath:     modules,
 			frameworkResModule: res,
-			lineageResModule:   lineageRes,
 			aidl:               android.OptionalPathForPath(aidl),
 		}
 	}
-
 	// Ensures that the specificed system SDK version is one of BOARD_SYSTEMSDK_VERSIONS (for vendor apks)
 	// or PRODUCT_SYSTEMSDK_VERSIONS (for other apks or when BOARD_SYSTEMSDK_VERSIONS is not set)
 	if sdkVersion.kind == sdkSystem && sdkVersion.version.isNumbered() {
@@ -399,13 +355,11 @@ func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep 
 				sdkVersion.raw, allowed_versions)
 		}
 	}
-
 	switch sdkVersion.kind {
 	case sdkPrivate:
 		return sdkDep{
 			useDefaultLibs:     true,
 			frameworkResModule: "framework-res",
-			lineageResModule:   "org.lineageos.platform-res",
 		}
 	case sdkNone:
 		systemModules := sdkContext.systemModules()
@@ -417,7 +371,6 @@ func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep 
 				noStandardLibs: true,
 			}
 		}
-
 		return sdkDep{
 			useModule:      true,
 			noStandardLibs: true,
@@ -428,40 +381,35 @@ func decodeSdkDep(ctx android.EarlyModuleContext, sdkContext sdkContext) sdkDep 
 		return sdkDep{
 			useDefaultLibs:     true,
 			frameworkResModule: "framework-res",
-			lineageResModule:   "org.lineageos.platform-res",
 			noFrameworksLibs:   true,
 		}
 	case sdkPublic:
-		return toModule([]string{"android_stubs_current"}, "framework-res", "org.lineageos.platform-res", sdkFrameworkAidlPath(ctx))
+		return toModule([]string{"android_stubs_current"}, "framework-res", sdkFrameworkAidlPath(ctx))
 	case sdkSystem:
-		return toModule([]string{"android_system_stubs_current"}, "framework-res", "org.lineageos.platform-res", sdkFrameworkAidlPath(ctx))
+		return toModule([]string{"android_system_stubs_current"}, "framework-res", sdkFrameworkAidlPath(ctx))
 	case sdkTest:
-		return toModule([]string{"android_test_stubs_current"}, "framework-res", "org.lineageos.platform-res", sdkFrameworkAidlPath(ctx))
+		return toModule([]string{"android_test_stubs_current"}, "framework-res", sdkFrameworkAidlPath(ctx))
 	case sdkCore:
-		return toModule([]string{"core.current.stubs"}, "", "", nil)
+		return toModule([]string{"core.current.stubs"}, "", nil)
 	case sdkModule:
 		// TODO(146757305): provide .apk and .aidl that have more APIs for modules
-		return toModule([]string{"android_module_lib_stubs_current"}, "framework-res", "org.lineageos.platform-res", nonUpdatableFrameworkAidlPath(ctx))
+		return toModule([]string{"android_module_lib_stubs_current"}, "framework-res", nonUpdatableFrameworkAidlPath(ctx))
 	case sdkSystemServer:
 		// TODO(146757305): provide .apk and .aidl that have more APIs for modules
-		return toModule([]string{"android_system_server_stubs_current"}, "framework-res", "org.lineageos.platform-res", sdkFrameworkAidlPath(ctx))
+		return toModule([]string{"android_system_server_stubs_current"}, "framework-res", sdkFrameworkAidlPath(ctx))
 	default:
 		panic(fmt.Errorf("invalid sdk %q", sdkVersion.raw))
 	}
 }
-
 func sdkPreSingletonFactory() android.Singleton {
 	return sdkPreSingleton{}
 }
-
 type sdkPreSingleton struct{}
-
 func (sdkPreSingleton) GenerateBuildActions(ctx android.SingletonContext) {
 	sdkJars, err := ctx.GlobWithDeps("prebuilts/sdk/*/public/android.jar", nil)
 	if err != nil {
 		ctx.Errorf("failed to glob prebuilts/sdk/*/public/android.jar: %s", err.Error())
 	}
-
 	var sdkVersions []int
 	for _, sdkJar := range sdkJars {
 		dir := filepath.Base(filepath.Dir(filepath.Dir(sdkJar)))
@@ -473,12 +421,9 @@ func (sdkPreSingleton) GenerateBuildActions(ctx android.SingletonContext) {
 		}
 		sdkVersions = append(sdkVersions, v)
 	}
-
 	sort.Ints(sdkVersions)
-
 	ctx.Config().Once(sdkVersionsKey, func() interface{} { return sdkVersions })
 }
-
 func LatestSdkVersionInt(ctx android.EarlyModuleContext) int {
 	sdkVersions := ctx.Config().Get(sdkVersionsKey).([]int)
 	latestSdkVersion := 0
@@ -487,23 +432,18 @@ func LatestSdkVersionInt(ctx android.EarlyModuleContext) int {
 	}
 	return latestSdkVersion
 }
-
 func sdkSingletonFactory() android.Singleton {
 	return sdkSingleton{}
 }
-
 type sdkSingleton struct{}
-
 func (sdkSingleton) GenerateBuildActions(ctx android.SingletonContext) {
 	if ctx.Config().UnbundledBuildUsePrebuiltSdks() || ctx.Config().IsPdkBuild() {
 		return
 	}
-
 	createSdkFrameworkAidl(ctx)
 	createNonUpdatableFrameworkAidl(ctx)
 	createAPIFingerprint(ctx)
 }
-
 // Create framework.aidl by extracting anything that implements android.os.Parcelable from the SDK stubs modules.
 func createSdkFrameworkAidl(ctx android.SingletonContext) {
 	stubsModules := []string{
@@ -511,34 +451,23 @@ func createSdkFrameworkAidl(ctx android.SingletonContext) {
 		"android_test_stubs_current",
 		"android_system_stubs_current",
 	}
-
 	combinedAidl := sdkFrameworkAidlPath(ctx)
 	tempPath := combinedAidl.ReplaceExtension(ctx, "aidl.tmp")
-
 	rule := createFrameworkAidl(stubsModules, tempPath, ctx)
-
 	commitChangeForRestat(rule, tempPath, combinedAidl)
-
 	rule.Build(pctx, ctx, "framework_aidl", "generate framework.aidl")
 }
-
 // Creates a version of framework.aidl for the non-updatable part of the platform.
 func createNonUpdatableFrameworkAidl(ctx android.SingletonContext) {
 	stubsModules := []string{"android_module_lib_stubs_current"}
-
 	combinedAidl := nonUpdatableFrameworkAidlPath(ctx)
 	tempPath := combinedAidl.ReplaceExtension(ctx, "aidl.tmp")
-
 	rule := createFrameworkAidl(stubsModules, tempPath, ctx)
-
 	commitChangeForRestat(rule, tempPath, combinedAidl)
-
 	rule.Build(pctx, ctx, "framework_non_updatable_aidl", "generate framework_non_updatable.aidl")
 }
-
 func createFrameworkAidl(stubsModules []string, path android.OutputPath, ctx android.SingletonContext) *android.RuleBuilder {
 	stubsJars := make([]android.Paths, len(stubsModules))
-
 	ctx.VisitAllModules(func(module android.Module) {
 		// Collect dex jar paths for the modules listed above.
 		if j, ok := module.(Dependency); ok {
@@ -548,9 +477,7 @@ func createFrameworkAidl(stubsModules []string, path android.OutputPath, ctx and
 			}
 		}
 	})
-
 	var missingDeps []string
-
 	for i := range stubsJars {
 		if stubsJars[i] == nil {
 			if ctx.Config().AllowMissingDependencies() {
@@ -560,26 +487,21 @@ func createFrameworkAidl(stubsModules []string, path android.OutputPath, ctx and
 			}
 		}
 	}
-
 	rule := android.NewRuleBuilder()
 	rule.MissingDeps(missingDeps)
-
 	var aidls android.Paths
 	for _, jars := range stubsJars {
 		for _, jar := range jars {
 			aidl := android.PathForOutput(ctx, "aidl", pathtools.ReplaceExtension(jar.Base(), "aidl"))
-
 			rule.Command().
 				Text("rm -f").Output(aidl)
 			rule.Command().
 				BuiltTool(ctx, "sdkparcelables").
 				Input(jar).
 				Output(aidl)
-
 			aidls = append(aidls, aidl)
 		}
 	}
-
 	rule.Command().
 		Text("rm -f").Output(path)
 	rule.Command().
@@ -587,32 +509,25 @@ func createFrameworkAidl(stubsModules []string, path android.OutputPath, ctx and
 		Inputs(aidls).
 		Text("| sort -u >").
 		Output(path)
-
 	return rule
 }
-
 func sdkFrameworkAidlPath(ctx android.PathContext) android.OutputPath {
 	return ctx.Config().Once(sdkFrameworkAidlPathKey, func() interface{} {
 		return android.PathForOutput(ctx, "framework.aidl")
 	}).(android.OutputPath)
 }
-
 func nonUpdatableFrameworkAidlPath(ctx android.PathContext) android.OutputPath {
 	return ctx.Config().Once(nonUpdatableFrameworkAidlPathKey, func() interface{} {
 		return android.PathForOutput(ctx, "framework_non_updatable.aidl")
 	}).(android.OutputPath)
 }
-
 // Create api_fingerprint.txt
 func createAPIFingerprint(ctx android.SingletonContext) {
 	out := ApiFingerprintPath(ctx)
-
 	rule := android.NewRuleBuilder()
-
 	rule.Command().
 		Text("rm -f").Output(out)
 	cmd := rule.Command()
-
 	if ctx.Config().PlatformSdkCodename() == "REL" {
 		cmd.Text("echo REL >").Output(out)
 	} else if ctx.Config().IsPdkBuild() {
@@ -623,7 +538,6 @@ func createAPIFingerprint(ctx android.SingletonContext) {
 		if err != nil {
 			ctx.Errorf("error globbing API files: %s", err)
 		}
-
 		cmd.Text("cat").
 			Inputs(android.PathsForSource(ctx, in)).
 			Text("| md5sum | cut -d' ' -f1 >").
@@ -636,21 +550,17 @@ func createAPIFingerprint(ctx android.SingletonContext) {
 			Text(">").
 			Output(out)
 	}
-
 	rule.Build(pctx, ctx, "api_fingerprint", "generate api_fingerprint.txt")
 }
-
 func ApiFingerprintPath(ctx android.PathContext) android.OutputPath {
 	return ctx.Config().Once(apiFingerprintPathKey, func() interface{} {
 		return android.PathForOutput(ctx, "api_fingerprint.txt")
 	}).(android.OutputPath)
 }
-
 func sdkMakeVars(ctx android.MakeVarsContext) {
 	if ctx.Config().UnbundledBuildUsePrebuiltSdks() || ctx.Config().IsPdkBuild() {
 		return
 	}
-
 	ctx.Strict("FRAMEWORK_AIDL", sdkFrameworkAidlPath(ctx).String())
 	ctx.Strict("API_FINGERPRINT", ApiFingerprintPath(ctx).String())
 }

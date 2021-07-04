@@ -84,11 +84,8 @@ func TestApp(t *testing.T) {
 			expectedLinkImplicits = append(expectedLinkImplicits, manifestFixer.Output.String())
 
 			frameworkRes := ctx.ModuleForTests("framework-res", "android_common")
-			lineageRes := ctx.ModuleForTests("org.lineageos.platform-res", "android_common")
 			expectedLinkImplicits = append(expectedLinkImplicits,
 				frameworkRes.Output("package-res.apk").Output.String())
-			expectedLinkImplicits = append(expectedLinkImplicits,
-				lineageRes.Output("package-res.apk").Output.String())
 
 			// Test the mapping from input files to compiled output file names
 			compile := foo.Output(compiledResourceFiles[0])
@@ -1449,7 +1446,7 @@ func TestCertificates(t *testing.T) {
 		name                string
 		bp                  string
 		certificateOverride string
-		expectedLineage     string
+		expectedCrystal     string
 		expectedCertificate string
 	}{
 		{
@@ -1462,7 +1459,7 @@ func TestCertificates(t *testing.T) {
 				}
 			`,
 			certificateOverride: "",
-			expectedLineage:     "",
+			expectedCrystal:     "",
 			expectedCertificate: "build/make/target/product/security/testkey.x509.pem build/make/target/product/security/testkey.pk8",
 		},
 		{
@@ -1481,7 +1478,7 @@ func TestCertificates(t *testing.T) {
 				}
 			`,
 			certificateOverride: "",
-			expectedLineage:     "",
+			expectedCrystal:     "",
 			expectedCertificate: "cert/new_cert.x509.pem cert/new_cert.pk8",
 		},
 		{
@@ -1495,7 +1492,7 @@ func TestCertificates(t *testing.T) {
 				}
 			`,
 			certificateOverride: "",
-			expectedLineage:     "",
+			expectedCrystal:     "",
 			expectedCertificate: "build/make/target/product/security/expiredkey.x509.pem build/make/target/product/security/expiredkey.pk8",
 		},
 		{
@@ -1514,17 +1511,17 @@ func TestCertificates(t *testing.T) {
 				}
 			`,
 			certificateOverride: "foo:new_certificate",
-			expectedLineage:     "",
+			expectedCrystal:     "",
 			expectedCertificate: "cert/new_cert.x509.pem cert/new_cert.pk8",
 		},
 		{
-			name: "certificate lineage",
+			name: "certificate crystal",
 			bp: `
 				android_app {
 					name: "foo",
 					srcs: ["a.java"],
 					certificate: ":new_certificate",
-					lineage: "lineage.bin",
+					crystal: "crystal.bin",
 					sdk_version: "current",
 				}
 
@@ -1534,7 +1531,7 @@ func TestCertificates(t *testing.T) {
 				}
 			`,
 			certificateOverride: "",
-			expectedLineage:     "--lineage lineage.bin",
+			expectedCrystal:     "--crystal crystal.bin",
 			expectedCertificate: "cert/new_cert.x509.pem cert/new_cert.pk8",
 		},
 	}
@@ -1557,8 +1554,8 @@ func TestCertificates(t *testing.T) {
 			}
 
 			signFlags := signapk.Args["flags"]
-			if test.expectedLineage != signFlags {
-				t.Errorf("Incorrect signing flags, expected: %q, got: %q", test.expectedLineage, signFlags)
+			if test.expectedCrystal != signFlags {
+				t.Errorf("Incorrect signing flags, expected: %q, got: %q", test.expectedCrystal, signFlags)
 			}
 		})
 	}
@@ -1732,7 +1729,7 @@ func TestOverrideAndroidApp(t *testing.T) {
 			name: "bar",
 			base: "foo",
 			certificate: ":new_certificate",
-			lineage: "lineage.bin",
+			crystal: "crystal.bin",
 			logging_parent: "bah",
 		}
 
@@ -1754,7 +1751,7 @@ func TestOverrideAndroidApp(t *testing.T) {
 		apkName        string
 		apkPath        string
 		certFlag       string
-		lineageFlag    string
+		crystalFlag    string
 		overrides      []string
 		aaptFlag       string
 		logging_parent string
@@ -1764,7 +1761,7 @@ func TestOverrideAndroidApp(t *testing.T) {
 			variantName:    "android_common",
 			apkPath:        "/target/product/test_device/system/app/foo/foo.apk",
 			certFlag:       "build/make/target/product/security/expiredkey.x509.pem build/make/target/product/security/expiredkey.pk8",
-			lineageFlag:    "",
+			crystalFlag:    "",
 			overrides:      []string{"qux"},
 			aaptFlag:       "",
 			logging_parent: "",
@@ -1774,7 +1771,7 @@ func TestOverrideAndroidApp(t *testing.T) {
 			variantName:    "android_common_bar",
 			apkPath:        "/target/product/test_device/system/app/bar/bar.apk",
 			certFlag:       "cert/new_cert.x509.pem cert/new_cert.pk8",
-			lineageFlag:    "--lineage lineage.bin",
+			crystalFlag:    "--crystal crystal.bin",
 			overrides:      []string{"qux", "foo"},
 			aaptFlag:       "",
 			logging_parent: "bah",
@@ -1784,7 +1781,7 @@ func TestOverrideAndroidApp(t *testing.T) {
 			variantName:    "android_common_baz",
 			apkPath:        "/target/product/test_device/system/app/baz/baz.apk",
 			certFlag:       "build/make/target/product/security/expiredkey.x509.pem build/make/target/product/security/expiredkey.pk8",
-			lineageFlag:    "",
+			crystalFlag:    "",
 			overrides:      []string{"qux", "foo"},
 			aaptFlag:       "--rename-manifest-package org.dandroid.bp",
 			logging_parent: "",
@@ -1814,10 +1811,10 @@ func TestOverrideAndroidApp(t *testing.T) {
 			t.Errorf("Incorrect signing flags, expected: %q, got: %q", expected.certFlag, certFlag)
 		}
 
-		// Check the lineage flags
-		lineageFlag := signapk.Args["flags"]
-		if expected.lineageFlag != lineageFlag {
-			t.Errorf("Incorrect signing flags, expected: %q, got: %q", expected.lineageFlag, lineageFlag)
+		// Check the crystal flags
+		crystalFlag := signapk.Args["flags"]
+		if expected.crystalFlag != crystalFlag {
+			t.Errorf("Incorrect signing flags, expected: %q, got: %q", expected.crystalFlag, crystalFlag)
 		}
 
 		// Check if the overrides field values are correctly aggregated.
@@ -2139,22 +2136,22 @@ func TestAndroidAppImport_Presigned(t *testing.T) {
 	}
 }
 
-func TestAndroidAppImport_SigningLineage(t *testing.T) {
+func TestAndroidAppImport_SigningCrystal(t *testing.T) {
 	ctx, _ := testJava(t, `
 	  android_app_import {
 			name: "foo",
 			apk: "prebuilts/apk/app.apk",
 			certificate: "platform",
-			lineage: "lineage.bin",
+			crystal: "crystal.bin",
 		}
 	`)
 
 	variant := ctx.ModuleForTests("foo", "android_common")
 
-	// Check cert signing lineage flag.
+	// Check cert signing crystal flag.
 	signedApk := variant.Output("signed/foo.apk")
 	signingFlag := signedApk.Args["flags"]
-	expected := "--lineage lineage.bin"
+	expected := "--crystal crystal.bin"
 	if expected != signingFlag {
 		t.Errorf("Incorrect signing flags, expected: %q, got: %q", expected, signingFlag)
 	}
@@ -2968,7 +2965,7 @@ func TestRuntimeResourceOverlay(t *testing.T) {
 		runtime_resource_overlay {
 			name: "foo",
 			certificate: "platform",
-			lineage: "lineage.bin",
+			crystal: "crystal.bin",
 			product_specific: true,
 			static_libs: ["bar"],
 			resource_libs: ["baz"],
@@ -3023,10 +3020,10 @@ func TestRuntimeResourceOverlay(t *testing.T) {
 
 	// Check cert signing flag.
 	signedApk := m.Output("signed/foo.apk")
-	lineageFlag := signedApk.Args["flags"]
-	expectedLineageFlag := "--lineage lineage.bin"
-	if expectedLineageFlag != lineageFlag {
-		t.Errorf("Incorrect signing lineage flags, expected: %q, got: %q", expectedLineageFlag, lineageFlag)
+	crystalFlag := signedApk.Args["flags"]
+	expectedCrystalFlag := "--crystal crystal.bin"
+	if expectedCrystalFlag != crystalFlag {
+		t.Errorf("Incorrect signing crystal flags, expected: %q, got: %q", expectedCrystalFlag, crystalFlag)
 	}
 	signingFlag := signedApk.Args["certificates"]
 	expected := "build/make/target/product/security/platform.x509.pem build/make/target/product/security/platform.pk8"
