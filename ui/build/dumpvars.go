@@ -137,15 +137,16 @@ func dumpMakeVars(ctx Context, config Config, goals, vars []string, write_soong_
 
 // Variables to print out in the top banner
 var BannerVars = []string{
-	"PLATFORM_VERSION_CODENAME",
-	"PLATFORM_VERSION",
 	"CRYSTAL_VERSION",
 	"CRYSTAL_VERSION_NAME",
 	"CRYSTAL_PURITY",
+	"CRYSTAL_BUILD_TYPE",
+	"LINEBREAK",
+	"PLATFORM_VERSION_CODENAME",
+	"PLATFORM_VERSION",
 	"TARGET_PRODUCT",
 	"TARGET_BUILD_VARIANT",
 	"TARGET_BUILD_TYPE",
-	"TARGET_BUILD_APPS",
 	"TARGET_ARCH",
 	"TARGET_ARCH_VARIANT",
 	"TARGET_CPU_VARIANT",
@@ -162,9 +163,6 @@ var BannerVars = []string{
 	"HOST_BUILD_TYPE",
 	"BUILD_ID",
 	"OUT_DIR",
-	"AUX_OS_VARIANT_LIST",
-	"TARGET_BUILD_PDK",
-	"PDK_FUSION_PLATFORM_ZIP",
 	"PRODUCT_SOONG_NAMESPACES",
 }
 
@@ -175,6 +173,9 @@ func Banner(make_vars map[string]string) string {
 	for _, name := range BannerVars {
 		if make_vars[name] != "" {
 			fmt.Fprintf(b, "%s=%s\n", name, make_vars[name])
+		}
+		if name == "LINEBREAK" {
+			fmt.Fprintf(b, "============================================\n")
 		}
 	}
 	fmt.Fprint(b, "============================================")
