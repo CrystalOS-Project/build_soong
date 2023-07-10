@@ -371,13 +371,14 @@ func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext
 	// Sign or align the package if package has not been preprocessed
 
 	if proptools.Bool(a.properties.Preprocessed) {
-		validationStamp := a.validatePresignedApk(ctx, srcApk)
-		output := android.PathForModuleOut(ctx, apkFilename)
+		var output android.WritablePath
+		// If using the input APK unmodified, still make a copy of it so that the output filename has the
+		// right basename.
+		output = android.PathForModuleOut(ctx, apkFilename)
 		ctx.Build(pctx, android.BuildParams{
-			Rule:       android.Cp,
-			Input:      srcApk,
-			Output:     output,
-			Validation: validationStamp,
+			Rule:   android.Cp,
+			Input:  srcApk,
+			Output: output,
 		})
 		a.outputFile = output
 		a.certificate = PresignedCertificate
