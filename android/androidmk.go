@@ -278,8 +278,8 @@ func (a *AndroidMkEntries) AddStrings(name string, value ...string) {
 // AddCompatibilityTestSuites adds the supplied test suites to the EntryMap, with special handling
 // for partial MTS and MCTS test suites.
 func (a *AndroidMkEntries) AddCompatibilityTestSuites(suites ...string) {
-	// M(C)TS supports a full test suite and partial per-module MTS test suites, with naming mts-${MODULE}.
-	// To reduce repetition, if we find a partial M(C)TS test suite without an full M(C)TS test suite,
+	// MT(C)S supports a full test suite and partial per-module MT(C)S test suites, with naming mts-${MODULE}.
+	// To reduce repetition, if we find a partial MT(C)S test suite without an full MTS test suite,
 	// we add the full test suite to our list.
 	if PrefixInList(suites, "mts-") && !InList("mts", suites) {
 		suites = append(suites, "mts")
